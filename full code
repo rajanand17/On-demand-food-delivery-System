@@ -1,0 +1,513 @@
+import { useState, useEffect } from 'react';
+import { Clock, MapPin, ShoppingBag, User, Home, ArrowRight, ChevronLeft, MinusCircle, PlusCircle, Check, Truck, RotateCw } from 'lucide-react';
+
+export default function FoodDeliveryApp() {
+  const [activeScreen, setActiveScreen] = useState('home');
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [cart, setCart] = useState([]);
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderStatus, setOrderStatus] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState(30);
+  const [driverLocation, setDriverLocation] = useState(10);
+
+  // Simulate order status updates after order is placed
+  useEffect(() => {
+    if (orderPlaced) {
+      setOrderStatus('Order Confirmed');
+      
+      const prepTimer = setTimeout(() => {
+        setOrderStatus('Preparing Your Food');
+      }, 5000);
+      
+      const cookingTimer = setTimeout(() => {
+        setOrderStatus('Food Ready, Awaiting Pickup');
+      }, 10000);
+      
+      const pickupTimer = setTimeout(() => {
+        setOrderStatus('Driver On The Way');
+      }, 15000);
+      
+      // Simulate driver movement
+      const locationInterval = setInterval(() => {
+        setDriverLocation(prev => {
+          if (prev < 90) return prev + 5;
+          return prev;
+        });
+        
+        setDeliveryTime(prev => {
+          if (prev > 5) return prev - 1;
+          return prev;
+        });
+      }, 2000);
+      
+      return () => {
+        clearTimeout(prepTimer);
+        clearTimeout(cookingTimer);
+        clearTimeout(pickupTimer);
+        clearInterval(locationInterval);
+      };
+    }
+  }, [orderPlaced]);
+
+  const restaurants = [
+    { 
+      id: 1, 
+      name: 'Burger Joint', 
+      rating: 4.8, 
+      deliveryTime: '20-30 min',
+      image: '/api/placeholder/300/200'
+    },
+    { 
+      id: 2, 
+      name: 'Pizza Palace', 
+      rating: 4.5, 
+      deliveryTime: '25-35 min',
+      image: '/api/placeholder/300/200'
+    },
+    { 
+      id: 3, 
+      name: 'Sushi Supreme', 
+      rating: 4.7, 
+      deliveryTime: '30-40 min',
+      image: '/api/placeholder/300/200'
+    }
+  ];
+
+  const menuItems = [
+    { 
+      id: 1, 
+      restaurantId: 1, 
+      name: 'Classic Burger', 
+      price: 9.99, 
+      description: 'Juicy beef patty with lettuce, tomato, and special sauce',
+      image: '/api/placeholder/200/150',
+      customizations: [
+        { id: 1, name: 'Cheese', price: 1.00, selected: false },
+        { id: 2, name: 'Bacon', price: 2.00, selected: false },
+        { id: 3, name: 'Extra Patty', price: 3.50, selected: false }
+      ]
+    },
+    { 
+      id: 2, 
+      restaurantId: 1, 
+      name: 'Chicken Sandwich', 
+      price: 8.99, 
+      description: 'Crispy chicken with mayo and pickles',
+      image: '/api/placeholder/200/150',
+      customizations: [
+        { id: 1, name: 'Cheese', price: 1.00, selected: false },
+        { id: 2, name: 'Bacon', price: 2.00, selected: false },
+        { id: 3, name: 'Spicy Sauce', price: 0.50, selected: false }
+      ]
+    },
+    { 
+      id: 3, 
+      restaurantId: 1, 
+      name: 'Veggie Burger', 
+      price: 7.99, 
+      description: 'Plant-based patty with avocado and sprouts',
+      image: '/api/placeholder/200/150',
+      customizations: [
+        { id: 1, name: 'Vegan Cheese', price: 1.50, selected: false },
+        { id: 2, name: 'Extra Avocado', price: 2.00, selected: false }
+      ]
+    }
+  ];
+
+  const handleRestaurantSelect = (restaurant) => {
+    setSelectedRestaurant(restaurant);
+    setActiveScreen('restaurant');
+  };
+
+  const handleItemSelect = (item) => {
+    setSelectedItem({...item, customizations: item.customizations.map(c => ({...c}))});
+    setActiveScreen('itemDetail');
+  };
+
+  const toggleCustomization = (customizationId) => {
+    setSelectedItem(prev => {
+      const updatedCustomizations = prev.customizations.map(c => 
+        c.id === customizationId ? {...c, selected: !c.selected} : c
+      );
+      return {...prev, customizations: updatedCustomizations};
+    });
+  };
+
+  const addToCart = () => {
+    setCart(prev => [...prev, selectedItem]);
+    setActiveScreen('restaurant');
+  };
+
+  const calculateTotal = () => {
+    return cart.reduce((total, item) => {
+      const customizationTotal = item.customizations
+        .filter(c => c.selected)
+        .reduce((sum, c) => sum + c.price, 0);
+      return total + item.price + customizationTotal;
+    }, 0).toFixed(2);
+  };
+
+  const placeOrder = () => {
+    setOrderPlaced(true);
+    setActiveScreen('tracking');
+  };
+
+  const backToHome = () => {
+    setActiveScreen('home');
+    setSelectedRestaurant(null);
+    setSelectedItem(null);
+    if (orderPlaced) {
+      setOrderPlaced(false);
+      setCart([]);
+      setOrderStatus('');
+      setDeliveryTime(30);
+      setDriverLocation(10);
+    }
+  };
+
+  // Home Screen
+  const HomeScreen = () => (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Food Delivery</h1>
+      <div className="flex items-center justify-between bg-gray-100 p-3 rounded-lg mb-4">
+        <input 
+          type="text" 
+          placeholder="Search for restaurants" 
+          className="bg-transparent outline-none flex-1" 
+        />
+      </div>
+      
+      <h2 className="text-lg font-semibold mb-2">Popular Restaurants</h2>
+      <div className="space-y-4">
+        {restaurants.map(restaurant => (
+          <div 
+            key={restaurant.id} 
+            className="bg-white shadow rounded-lg overflow-hidden cursor-pointer"
+            onClick={() => handleRestaurantSelect(restaurant)}
+          >
+            <img 
+              src={restaurant.image} 
+              alt={restaurant.name} 
+              className="w-full h-40 object-cover" 
+            />
+            <div className="p-3">
+              <h3 className="font-semibold text-lg">{restaurant.name}</h3>
+              <div className="flex justify-between mt-2">
+                <span className="text-yellow-500">★ {restaurant.rating}</span>
+                <span className="text-gray-500">{restaurant.deliveryTime}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Restaurant Screen
+  const RestaurantScreen = () => (
+    <div className="p-4">
+      <div className="flex items-center mb-4">
+        <button 
+          onClick={() => setActiveScreen('home')}
+          className="mr-2"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <h1 className="text-xl font-semibold">{selectedRestaurant.name}</h1>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-sm p-2 mb-4">
+        <div className="flex justify-between text-sm">
+          <span>★ {selectedRestaurant.rating}</span>
+          <span>{selectedRestaurant.deliveryTime}</span>
+        </div>
+      </div>
+      
+      <h2 className="text-lg font-semibold mb-2">Menu</h2>
+      <div className="space-y-3">
+        {menuItems
+          .filter(item => item.restaurantId === selectedRestaurant.id)
+          .map(item => (
+            <div 
+              key={item.id} 
+              className="bg-white p-3 rounded-lg shadow-sm flex cursor-pointer"
+              onClick={() => handleItemSelect(item)}
+            >
+              <img 
+                src={item.image} 
+                alt={item.name} 
+                className="w-20 h-20 rounded-lg object-cover mr-3" 
+              />
+              <div className="flex-1">
+                <h3 className="font-semibold">{item.name}</h3>
+                <p className="text-gray-500 text-sm line-clamp-2">{item.description}</p>
+                <p className="font-semibold mt-1">${item.price.toFixed(2)}</p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+      
+      {cart.length > 0 && (
+        <div 
+          className="fixed bottom-16 left-0 right-0 mx-auto bg-black text-white p-4 rounded-t-lg cursor-pointer"
+          onClick={() => setActiveScreen('cart')}
+        >
+          <div className="flex justify-between items-center">
+            <span>{cart.length} item{cart.length > 1 ? 's' : ''} in cart</span>
+            <div className="flex items-center">
+              <span className="mr-2">${calculateTotal()}</span>
+              <ArrowRight size={18} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Item Detail Screen
+  const ItemDetailScreen = () => (
+    <div className="p-4">
+      <div className="flex items-center mb-4">
+        <button 
+          onClick={() => setActiveScreen('restaurant')}
+          className="mr-2"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <h1 className="text-xl font-semibold">Customize Order</h1>
+      </div>
+      
+      <img 
+        src={selectedItem.image} 
+        alt={selectedItem.name} 
+        className="w-full h-48 object-cover rounded-lg mb-4" 
+      />
+      
+      <h2 className="text-xl font-semibold mb-1">{selectedItem.name}</h2>
+      <p className="text-gray-600 mb-4">{selectedItem.description}</p>
+      
+      <div className="mb-6">
+        <h3 className="font-semibold mb-2">Customizations</h3>
+        {selectedItem.customizations.map(customization => (
+          <div 
+            key={customization.id}
+            className="flex items-center justify-between py-2 border-b"
+          >
+            <div>
+              <p>{customization.name}</p>
+              <p className="text-sm text-gray-500">+${customization.price.toFixed(2)}</p>
+            </div>
+            <button
+              onClick={() => toggleCustomization(customization.id)}
+              className={`p-2 rounded-full ${customization.selected ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
+            >
+              {customization.selected ? <Check size={16} /> : <PlusCircle size={16} />}
+            </button>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mb-4">
+        <h3 className="font-semibold mb-2">Special Instructions</h3>
+        <textarea 
+          placeholder="Add any special requests here..." 
+          className="w-full p-3 border rounded-lg"
+          rows="2"
+        ></textarea>
+      </div>
+      
+      <button 
+        onClick={addToCart}
+        className="w-full bg-black text-white p-4 rounded-lg font-semibold"
+      >
+        Add to Cart - ${(selectedItem.price + selectedItem.customizations.filter(c => c.selected).reduce((sum, c) => sum + c.price, 0)).toFixed(2)}
+      </button>
+    </div>
+  );
+
+  // Cart Screen
+  const CartScreen = () => (
+    <div className="p-4">
+      <div className="flex items-center mb-4">
+        <button 
+          onClick={() => setActiveScreen('restaurant')}
+          className="mr-2"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <h1 className="text-xl font-semibold">Your Cart</h1>
+      </div>
+      
+      <div className="mb-6">
+        <h2 className="font-semibold mb-2">Order Summary</h2>
+        {cart.map((item, index) => (
+          <div key={index} className="flex justify-between py-3 border-b">
+            <div>
+              <p className="font-medium">{item.name}</p>
+              {item.customizations.filter(c => c.selected).map(c => (
+                <p key={c.id} className="text-sm text-gray-500">+ {c.name}</p>
+              ))}
+            </div>
+            <p>
+              ${(item.price + item.customizations.filter(c => c.selected).reduce((sum, c) => sum + c.price, 0)).toFixed(2)}
+            </p>
+          </div>
+        ))}
+      </div>
+      
+      <div className="mb-6">
+        <h2 className="font-semibold mb-2">Delivery Address</h2>
+        <div className="flex items-center bg-gray-100 p-3 rounded-lg">
+          <MapPin size={18} className="mr-2 text-gray-500" />
+          <input 
+            type="text" 
+            placeholder="Enter your delivery address" 
+            className="bg-transparent outline-none flex-1" 
+            defaultValue="123 Main Street, Apt 4B"
+          />
+        </div>
+      </div>
+      
+      <div className="mb-6">
+        <h2 className="font-semibold mb-2">Payment Method</h2>
+        <div className="bg-gray-100 p-3 rounded-lg flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-blue-500 rounded-md mr-3"></div>
+            <span>•••• •••• •••• 4242</span>
+          </div>
+          <span className="text-blue-500">Change</span>
+        </div>
+      </div>
+      
+      <div className="mb-8 bg-gray-100 p-4 rounded-lg">
+        <div className="flex justify-between mb-2">
+          <span>Subtotal</span>
+          <span>${calculateTotal()}</span>
+        </div>
+        <div className="flex justify-between mb-2">
+          <span>Delivery Fee</span>
+          <span>$2.99</span>
+        </div>
+        <div className="flex justify-between font-semibold">
+          <span>Total</span>
+          <span>${(parseFloat(calculateTotal()) + 2.99).toFixed(2)}</span>
+        </div>
+      </div>
+      
+      <button 
+        onClick={placeOrder}
+        className="w-full bg-black text-white p-4 rounded-lg font-semibold"
+      >
+        Place Order
+      </button>
+    </div>
+  );
+
+  // Order Tracking Screen
+  const TrackingScreen = () => (
+    <div className="p-4">
+      <div className="flex items-center mb-4">
+        <button 
+          onClick={backToHome}
+          className="mr-2"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <h1 className="text-xl font-semibold">Order Tracking</h1>
+      </div>
+      
+      <div className="bg-green-100 p-4 rounded-lg mb-6">
+        <h2 className="font-semibold text-green-800 mb-1">{orderStatus}</h2>
+        <p className="text-green-700">Estimated delivery in {deliveryTime} minutes</p>
+      </div>
+      
+      <div className="mb-6">
+        <div className="relative h-2 bg-gray-200 rounded-full mb-4">
+          <div 
+            className="absolute top-0 left-0 h-2 bg-green-500 rounded-full" 
+            style={{width: `${driverLocation}%`}}
+          ></div>
+        </div>
+        
+        <div className="flex justify-between text-sm text-gray-500">
+          <span>Order Placed</span>
+          <span>Preparing</span>
+          <span>On the Way</span>
+          <span>Delivered</span>
+        </div>
+      </div>
+      
+      <div className="bg-gray-100 p-4 rounded-lg mb-6">
+        <h3 className="font-semibold mb-2">Delivery Details</h3>
+        <div className="flex items-center mb-2">
+          <MapPin size={18} className="mr-2 text-gray-500" />
+          <span>123 Main Street, Apt 4B</span>
+        </div>
+        <div className="flex items-center">
+          <User size={18} className="mr-2 text-gray-500" />
+          <span>Michael - Your Delivery Driver</span>
+        </div>
+      </div>
+      
+      <div className="bg-gray-100 p-4 rounded-lg">
+        <h3 className="font-semibold mb-2">Order Summary</h3>
+        {cart.map((item, index) => (
+          <div key={index} className="flex justify-between py-1">
+            <span>{item.name}</span>
+            <span>${item.price.toFixed(2)}</span>
+          </div>
+        ))}
+        <div className="border-t mt-2 pt-2 flex justify-between font-semibold">
+          <span>Total</span>
+          <span>${(parseFloat(calculateTotal()) + 2.99).toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Navigation Bar Component
+  const NavigationBar = () => (
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-2">
+      <button 
+        onClick={() => backToHome()} 
+        className={`p-2 flex flex-col items-center ${activeScreen === 'home' ? 'text-black' : 'text-gray-500'}`}
+      >
+        <Home size={20} />
+        <span className="text-xs mt-1">Home</span>
+      </button>
+      <button 
+        onClick={() => setActiveScreen('search')} 
+        className={`p-2 flex flex-col items-center ${activeScreen === 'search' ? 'text-black' : 'text-gray-500'}`}
+      >
+        <MapPin size={20} />
+        <span className="text-xs mt-1">Nearby</span>
+      </button>
+      <button 
+        onClick={() => setActiveScreen(orderPlaced ? 'tracking' : 'cart')} 
+        className={`p-2 flex flex-col items-center ${activeScreen === 'cart' || activeScreen === 'tracking' ? 'text-black' : 'text-gray-500'}`}
+      >
+        {orderPlaced ? <Truck size={20} /> : <ShoppingBag size={20} />}
+        <span className="text-xs mt-1">{orderPlaced ? 'Order' : 'Cart'}</span>
+      </button>
+      <button 
+        className="p-2 flex flex-col items-center text-gray-500"
+      >
+        <User size={20} />
+        <span className="text-xs mt-1">Account</span>
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="bg-gray-50 min-h-screen pb-16">
+      {activeScreen === 'home' && <HomeScreen />}
+      {activeScreen === 'restaurant' && <RestaurantScreen />}
+      {activeScreen === 'itemDetail' && <ItemDetailScreen />}
+      {activeScreen === 'cart' && <CartScreen />}
+      {activeScreen === 'tracking' && <TrackingScreen />}
+      <NavigationBar />
+    </div>
+  );
+}
